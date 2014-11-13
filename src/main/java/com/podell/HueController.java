@@ -39,7 +39,7 @@ public class HueController {
     
 
     // Constructor
-    public HueController() {
+    public HueController() { 
     	try {
     		if( ! getPropValues() )
     			return;
