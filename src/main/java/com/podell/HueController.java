@@ -68,6 +68,8 @@ public class HueController {
     		System.out.println("IoException 1 " + e );
 		} catch (ApiException e) {
     		System.out.println("ApiException 1 " + e );
+		} catch (NullPointerException e) {
+	  		System.out.println("NullPointerException 1 " + e );
 		}     	
     }
 
@@ -79,6 +81,10 @@ public class HueController {
 			StringBuilder sb = new StringBuilder();
 			for(Lamp lamp : arrayLamps) {
 				lamp.jenkinsColor = getColor(json, lamp.jenkinsJob);
+				if( lamp.jenkinsColor == null ) {
+						System.out.println("Unable to match a current Jenkins job for lamp '" + lamp.name + "' and job name '" + lamp.jenkinsJob + "'");
+						continue;
+				}
 				lamp.su = buildStateUpdateForAJenkinsColor(lamp.jenkinsColor);
 				bridge.setLightState(lamp.light, lamp.su);
 		    	sb.append("'" +lamp.name + "' -> '" + lamp.jenkinsColor + "' (" + lamp.fullLight.getState().getBrightness() + ") for '" + 
@@ -90,7 +96,9 @@ public class HueController {
 		} catch (IOException e) {
 	  		System.out.println("IoException 2 " + e );
 		} catch (ApiException e) {
-	  		System.out.println("ApiException 1 " + e );
+	  		System.out.println("ApiException 2 " + e );
+		} catch (NullPointerException e) {
+	  		System.out.println("NullPointerException 2 " + e );
 		}
         
         return true;
