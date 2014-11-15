@@ -203,8 +203,13 @@ public class HueController {
 	  	while( prop != null ) {
 	  		jenkinsStateUpdater(); 
 	  		try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {}
+	  			Integer delay = new Integer(prop.getProperty("polling_delay_ms"));
+				Thread.sleep(delay);
+			} catch (InterruptedException e) {
+				// Thread exception, won't happen
+			} catch (NumberFormatException nfe) {
+		  		System.out.println( "Unable to parse : '" + prop.getProperty("polling_delay_ms") + "' as an integer number of milliseconds");
+			}
 	  	}
     }  
 }
