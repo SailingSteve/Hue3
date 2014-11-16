@@ -192,21 +192,21 @@ public class HueController {
      * Main  Hue Controller
      * https://github.com/SailingSteve/hue3.git
 	 * Steve Podell
-	 * @param args 0: <computer name>, 0|1: "classpath", if you want to print the classpath on startup
+	 * @param 
 	 */
     public static void main(String[] args) {
    	
-  		if( Arrays.asList(args).contains("classpath") )
-	  		System.out.println( "Classpath: " + System.getProperty("java.class.path"));
-
-  		new HueController();
-	  	while( prop != null ) {
+		new HueController();
+		if (prop == null) {
+	  		System.out.println( "unable to find config.properites file on the classpath: " + System.getProperty("java.class.path"));
+		} 
+		else while( true ) {
 	  		jenkinsStateUpdater(); 
 	  		try {
 	  			Integer delay = new Integer(prop.getProperty("polling_delay_ms"));
 				Thread.sleep(delay);
 			} catch (InterruptedException e) {
-				// Thread exception, won't happen
+				return;
 			} catch (NumberFormatException nfe) {
 		  		System.out.println( "Unable to parse : '" + prop.getProperty("polling_delay_ms") + "' as an integer number of milliseconds");
 			}
