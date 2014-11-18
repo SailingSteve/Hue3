@@ -15,18 +15,20 @@ job2=PSA - develop - Unit Tests
 job3=PSA-MobleTimecard-develop-DevOrg94
 urlString=https://ci.dev.financialforce.com/view/PSA/api/json
 username=spodell@financialforce.com
-password=e1eb6eb5566fe3173914444802bbbbbb
+password=e1eb6eb5566fe3173914444802b44056
 hueBridgeIP=10.0.1.40
 jenkins_blue_hue=46920
 jenkins_red_hue=65280
 jenkins_blue_anime_hue=46920
 jenkins_red_anime_hue=65280
 jenkins_disabled_color_temperature=500
-jenkins_blue_brightness=42
+jenkins_blue_brightness=41
 jenkins_red_brightness=42
 jenkins_blue_anime_brightness=42
 jenkins_red_anime_brightness=42
 jenkins_disabled_brightness=42
+jenkins_blue_anime_alert=false
+jenkins_red_anime_alert=false
 polling_delay_ms=15000
 Steve-Podells-MacBook-Pro-17:creds stevepodell$ 
 

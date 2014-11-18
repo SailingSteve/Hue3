@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Properties;
 
@@ -19,8 +18,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.commons.io.IOUtils;
 
 /**
- * A small daemon to update hue colors based on jenkins status
- * @author stevepodell
+ * A small daemon to update hue colors based on Jenkins status
  * https://github.com/Q42/Jue/wiki
  */
 public class HueController {   
@@ -36,41 +34,47 @@ public class HueController {
     	String jenkinsColor;
     	String jenkinsJob;
     }
-    
 
     // Constructor
-    public HueController() { 
-    	try {
-    		if( ! getPropValues() )
-    			return;
-          	bridge = new HueBridge((String)prop.getProperty("hueBridgeIP"));
-          	bridge.authenticate("ffdcJenkins");
-	    	String newUser = bridge.getUsername();
-	    	
-	    	System.out.println("Connected to the bridge as '" + newUser + "'");
-	    	
- 	    	// Initialize lamp array
-	    	int i = 1;
-			for (Light light : bridge.getLights()) {
-				String job = (String)prop.getProperty("job"+ i++);
-			    if( job == null )
-			    	break;
-			    Lamp lamp = new Lamp();
-			    lamp.jenkinsJob = job;
-				lamp.light = light;
-			    lamp.fullLight = bridge.getLight(light);
-			    lamp.name = lamp.fullLight.getName();
-			    System.out.println(lamp.name + ", brightness: " + lamp.fullLight.getState().getBrightness() + ", hue: " + lamp.fullLight.getState().getHue() 
-			    		+ ", saturation: " + lamp.fullLight.getState().getSaturation() + ", temperature: " + lamp.fullLight.getState().getColorTemperature());
-			    arrayLamps.add(lamp);
-			}				
-    	} catch (IOException e) {
-    		System.out.println("IoException 1 " + e );
-		} catch (ApiException e) {
-    		System.out.println("ApiException 1 " + e );
-		} catch (NullPointerException e) {
-	  		System.out.println("NullPointerException 1 " + e );
-		}     	
+    public HueController() {
+   		boolean hasConnectedToTheBridge = false;
+   		
+		while( hasConnectedToTheBridge == false ) {
+			try {
+     			
+	    		if( ! getPropValues() )
+	    			return;
+	          	bridge = new HueBridge((String)prop.getProperty("hueBridgeIP"));
+	          	bridge.authenticate("ffdcJenkins");
+		    	String newUser = bridge.getUsername();
+		    	
+		    	System.out.println("Connected to the bridge as '" + newUser + "'");
+		    	
+	 	    	// Initialize lamp array
+		    	int i = 1;
+				for (Light light : bridge.getLights()) {
+					String job = (String)prop.getProperty("job"+ i++);
+				    if( job == null )
+				    	break;
+				    Lamp lamp = new Lamp();
+				    lamp.jenkinsJob = job;
+					lamp.light = light;
+				    lamp.fullLight = bridge.getLight(light);
+				    lamp.name = lamp.fullLight.getName();
+				    System.out.println(lamp.name + ", brightness: " + lamp.fullLight.getState().getBrightness() + ", hue: " + lamp.fullLight.getState().getHue() 
+				    		+ ", saturation: " + lamp.fullLight.getState().getSaturation() + ", temperature: " + lamp.fullLight.getState().getColorTemperature());
+				    arrayLamps.add(lamp);
+				}				
+	    	} catch (IOException e) {
+	    		System.out.println("IoException 1 " + e );
+			} catch (ApiException e) {
+	    		System.out.println("ApiException 1 " + e );
+			} catch (NullPointerException e) {
+		  		System.out.println("NullPointerException 1 " + e );
+			}     	
+
+			hasConnectedToTheBridge = true;
+ 		}
     }
 
     // https://ci.dev.financialforce.com/api/xml
@@ -113,14 +117,22 @@ public class HueController {
      		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_hue")))
      				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_brightness")))
      				.setAlert(AlertMode.NONE);    	
-    	if(jenkinsColor.equals("blue_anime"))
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_anime_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_anime_brightness")))
-     				.setAlert(AlertMode.SELECT);
-    	if(jenkinsColor.equals("red_anime"))
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_anime_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_anime_brightness")))
-     				.setAlert(AlertMode.SELECT);
+    	if(jenkinsColor.equals("blue_anime")) {
+    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_anime_hue")))
+     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_anime_brightness")));
+    		if( prop.getProperty("jenkins_blue_anime_alert").compareToIgnoreCase("true") == 0 )
+    			return su.setAlert(AlertMode.SELECT);
+    		else 
+    			return  su.setAlert(AlertMode.NONE);
+    	}
+    	if(jenkinsColor.equals("red_anime")) {
+    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_anime_hue")))
+				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_anime_brightness")));
+    		if( prop.getProperty("jenkins_red_anime_alert").compareToIgnoreCase("true") == 0 )
+    			return su.setAlert(AlertMode.SELECT);
+    		else 
+    			return  su.setAlert(AlertMode.NONE);
+    	}
     	// else "notbuilt" or "disabled", is dim white
  			return new StateUpdate().turnOn().setColorTemperature(Integer.valueOf(prop.getProperty("jenkins_disabled_color_temperature")))
  					.setBrightness(Integer.valueOf(prop.getProperty("jenkins_disabled_brightness")))
