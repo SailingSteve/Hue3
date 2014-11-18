@@ -40,35 +40,44 @@ public class HueController {
 
     // Constructor
     public HueController() {
-    	try {
-    		if( ! getPropValues() )
-    			return;
-          	bridge = new HueBridge((String)prop.getProperty("hueBridgeIP"));
-          	bridge.authenticate("ffdcJenkins");
-	    	String newUser = bridge.getUsername();
-	    	
-	    	System.out.println("Connected to the bridge as '" + newUser + "'");
-	    	
- 	    	// Initialize lamp array
-	    	int i = 1;
-			for (Light light : bridge.getLights()) {
-				String job = (String)prop.getProperty("job"+ i++);
-			    if( job == null )
-			    	break;
-			    Lamp lamp = new Lamp();
-			    lamp.jenkinsJob = job;
-				lamp.light = light;
-			    lamp.fullLight = bridge.getLight(light);
-			    lamp.name = lamp.fullLight.getName();
-			    System.out.println(lamp.name + ", brightness: " + lamp.fullLight.getState().getBrightness() + ", hue: " + lamp.fullLight.getState().getHue() 
-			    		+ ", saturation: " + lamp.fullLight.getState().getSaturation() + ", temperature: " + lamp.fullLight.getState().getColorTemperature());
-			    arrayLamps.add(lamp);
-			}				
-    	} catch (IOException e) {
-    		System.out.println("IoException 1 " + e );
-		} catch (ApiException e) {
-    		System.out.println("ApiException 1 " + e );
-		}     	
+   		boolean hasConnectedToTheBridge = false;
+   		
+		while( hasConnectedToTheBridge == false ) {
+			try {
+     			
+	    		if( ! getPropValues() )
+	    			return;
+	          	bridge = new HueBridge((String)prop.getProperty("hueBridgeIP"));
+	          	bridge.authenticate("ffdcJenkins");
+		    	String newUser = bridge.getUsername();
+		    	
+		    	System.out.println("Connected to the bridge as '" + newUser + "'");
+		    	
+	 	    	// Initialize lamp array
+		    	int i = 1;
+				for (Light light : bridge.getLights()) {
+					String job = (String)prop.getProperty("job"+ i++);
+				    if( job == null )
+				    	break;
+				    Lamp lamp = new Lamp();
+				    lamp.jenkinsJob = job;
+					lamp.light = light;
+				    lamp.fullLight = bridge.getLight(light);
+				    lamp.name = lamp.fullLight.getName();
+				    System.out.println(lamp.name + ", brightness: " + lamp.fullLight.getState().getBrightness() + ", hue: " + lamp.fullLight.getState().getHue() 
+				    		+ ", saturation: " + lamp.fullLight.getState().getSaturation() + ", temperature: " + lamp.fullLight.getState().getColorTemperature());
+				    arrayLamps.add(lamp);
+				}				
+	    	} catch (IOException e) {
+	    		System.out.println("IoException 1 " + e );
+			} catch (ApiException e) {
+	    		System.out.println("ApiException 1 " + e );
+			} catch (NullPointerException e) {
+		  		System.out.println("NullPointerException 1 " + e );
+			}     	
+			
+			hasConnectedToTheBridge = true;
+ 		}
     }
 
     // https://ci.dev.financialforce.com/api/xml
@@ -79,6 +88,10 @@ public class HueController {
 			StringBuilder sb = new StringBuilder();
 			for(Lamp lamp : arrayLamps) {
 				lamp.jenkinsColor = getColor(json, lamp.jenkinsJob);
+				if( lamp.jenkinsColor == null ) {
+						System.out.println("Unable to match a current Jenkins job for lamp '" + lamp.name + "' and job name '" + lamp.jenkinsJob + "'");
+						continue;
+				}
 				lamp.su = buildStateUpdateForAJenkinsColor(lamp.jenkinsColor);
 				bridge.setLightState(lamp.light, lamp.su);
 		    	sb.append("'" +lamp.name + "' -> '" + lamp.jenkinsColor + "' (" + lamp.fullLight.getState().getBrightness() + ") for '" + 
@@ -90,7 +103,9 @@ public class HueController {
 		} catch (IOException e) {
 	  		System.out.println("IoException 2 " + e );
 		} catch (ApiException e) {
-	  		System.out.println("ApiException 1 " + e );
+	  		System.out.println("ApiException 2 " + e );
+		} catch (NullPointerException e) {
+	  		System.out.println("NullPointerException 2 " + e );
 		}
         
         return true;
