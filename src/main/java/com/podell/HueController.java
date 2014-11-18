@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Properties;
 
@@ -19,8 +18,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.commons.io.IOUtils;
 
 /**
- * A small daemon to update hue colors based on jenkins status
- * @author stevepodell
+ * A small daemon to update hue colors based on Jenkins status
  * https://github.com/Q42/Jue/wiki
  */
 public class HueController {   
@@ -36,7 +34,6 @@ public class HueController {
     	String jenkinsColor;
     	String jenkinsJob;
     }
-    
 
     // Constructor
     public HueController() {
@@ -120,14 +117,22 @@ public class HueController {
      		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_hue")))
      				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_brightness")))
      				.setAlert(AlertMode.NONE);    	
-    	if(jenkinsColor.equals("blue_anime"))
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_anime_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_anime_brightness")))
-     				.setAlert(AlertMode.SELECT);
-    	if(jenkinsColor.equals("red_anime"))
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_anime_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_anime_brightness")))
-     				.setAlert(AlertMode.SELECT);
+    	if(jenkinsColor.equals("blue_anime")) {
+    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_anime_hue")))
+     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_anime_brightness")));
+    		if( prop.getProperty("jenkins_blue_anime_alert").compareToIgnoreCase("true") == 0 )
+    			return su.setAlert(AlertMode.SELECT);
+    		else 
+    			return  su.setAlert(AlertMode.NONE);
+    	}
+    	if(jenkinsColor.equals("red_anime")) {
+    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_anime_hue")))
+				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_anime_brightness")));
+    		if( prop.getProperty("jenkins_red_anime_alert").compareToIgnoreCase("true") == 0 )
+    			return su.setAlert(AlertMode.SELECT);
+    		else 
+    			return  su.setAlert(AlertMode.NONE);
+    	}
     	// else "notbuilt" or "disabled", is dim white
  			return new StateUpdate().turnOn().setColorTemperature(Integer.valueOf(prop.getProperty("jenkins_disabled_color_temperature")))
  					.setBrightness(Integer.valueOf(prop.getProperty("jenkins_disabled_brightness")))
@@ -199,19 +204,24 @@ public class HueController {
      * Main  Hue Controller
      * https://github.com/SailingSteve/hue3.git
 	 * Steve Podell
-	 * @param args 0: <computer name>, 0|1: "classpath", if you want to print the classpath on startup
+	 * @param 
 	 */
     public static void main(String[] args) {
    	
-  		if( Arrays.asList(args).contains("classpath") )
-	  		System.out.println( "Classpath: " + System.getProperty("java.class.path"));
-
-  		new HueController();
-	  	while( prop != null ) {
+		new HueController();
+		if (prop == null) {
+	  		System.out.println( "unable to find config.properites file on the classpath: " + System.getProperty("java.class.path"));
+		} 
+		else while( true ) {
 	  		jenkinsStateUpdater(); 
 	  		try {
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {}
+	  			Integer delay = new Integer(prop.getProperty("polling_delay_ms"));
+				Thread.sleep(delay);
+			} catch (InterruptedException e) {
+				return;
+			} catch (NumberFormatException nfe) {
+		  		System.out.println( "Unable to parse : '" + prop.getProperty("polling_delay_ms") + "' as an integer number of milliseconds");
+			}
 	  	}
     }  
 }
