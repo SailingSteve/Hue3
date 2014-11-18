@@ -75,7 +75,7 @@ public class HueController {
 			} catch (NullPointerException e) {
 		  		System.out.println("NullPointerException 1 " + e );
 			}     	
-			
+
 			hasConnectedToTheBridge = true;
  		}
     }
