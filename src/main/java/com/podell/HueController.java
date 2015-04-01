@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Properties;
 
 import nl.q42.jue.FullLight;
@@ -26,6 +28,7 @@ public class HueController {
     private static HueBridge bridge = null;
 	private static ArrayList<Lamp> arrayLamps = new ArrayList<Lamp>();   
 	     
+	// An object standing in for a structure, contains the info for a individual hue lamp
     public class Lamp {
     	String name;
     	Light light;
@@ -34,8 +37,14 @@ public class HueController {
     	String jenkinsColor;
     	String jenkinsJob;
     }
+    
+    // The comma delimited values from jenkins_blue_hue_sat_bright_alert
+    public enum EnumHue {
+    	HUE, SATURATION, BRIGHTNESS, ALERT
+     }
 
     // Constructor
+    // To discover the IP of the Hue bridge on your local network, navigate to  https://www.meethue.com/api/nupnp
     public HueController() {
    		boolean hasConnectedToTheBridge = false;
    		
@@ -79,7 +88,7 @@ public class HueController {
 
     // https://ci.dev.financialforce.com/api/xml
     // https://ci.dev.financialforce.com/view/PSA/api/json
-    static boolean jenkinsStateUpdater() {
+    static boolean jenkinsStateUpdater( boolean isDebugLogging ) {
     	try {
 			String json = getJenkinsDomCurl((String)prop.getProperty("urlString"), (String)prop.getProperty("username"), (String)prop.getProperty("password"));
 			StringBuilder sb = new StringBuilder();
@@ -91,10 +100,12 @@ public class HueController {
 				}
 				lamp.su = buildStateUpdateForAJenkinsColor(lamp.jenkinsColor);
 				bridge.setLightState(lamp.light, lamp.su);
-		    	sb.append("'" +lamp.name + "' -> '" + lamp.jenkinsColor + "' (" + lamp.fullLight.getState().getBrightness() + ") for '" + 
-		    			lamp.jenkinsJob + "';  ");
+				sb.append("'" +lamp.name + "' -> '" + lamp.jenkinsColor + "' (" + lamp.fullLight.getState().getBrightness() + ") for '" + 
+							lamp.jenkinsJob + "';  ");
 			}
-	  		System.out.println( new SimpleDateFormat("MM/dd/yyyy HH:mm:ss - ").format(Calendar.getInstance().getTime()) + sb );
+			
+			if (isDebugLogging)
+				System.out.println( new SimpleDateFormat("MM/dd/yyyy HH:mm:ss - ").format(Calendar.getInstance().getTime()) + sb );
 		} catch (ClientProtocolException e) {
 	  		System.out.println("ClientProtocolException " + e );
 		} catch (IOException e) {
@@ -109,36 +120,42 @@ public class HueController {
     }
     
     static StateUpdate buildStateUpdateForAJenkinsColor( String jenkinsColor ) {
-    	if(jenkinsColor.equals("blue")) 
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_brightness")))
-     				.setAlert(AlertMode.NONE);
-    	if(jenkinsColor.equals("red"))
-     		return new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_brightness")))
-     				.setAlert(AlertMode.NONE);    	
-    	if(jenkinsColor.equals("blue_anime")) {
-    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_blue_anime_hue")))
-     				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_blue_anime_brightness")));
-    		if( prop.getProperty("jenkins_blue_anime_alert").compareToIgnoreCase("true") == 0 )
-    			return su.setAlert(AlertMode.SELECT);
-    		else 
-    			return  su.setAlert(AlertMode.NONE);
+    	String propKey = null;
+    	
+    	if(jenkinsColor.equals("blue")) {
+    		propKey = "jenkins_blue_hue_sat_bright_alert";
+    	} else if (jenkinsColor.equals("red")) {
+    		propKey = "jenkins_red_hue_sat_bright_alert";
+    	} else if (jenkinsColor.equals("red")) {
+    		propKey = "jenkins_blue_hue_sat_bright_alert";
+    	} else if (jenkinsColor.equals("blue_anime")) {
+    		propKey = "jenkins_blue_anime_hue_sat_bright_alert";
+    	} else if (jenkinsColor.equals("red_anime")) {
+    		propKey = "jenkins_red_anime_hue_sat_bright_alert";
+    	} else {
+    		// "notbuilt" or "disabled", is dim white
+    		propKey = "jenkins_disabled_hue_sat_bright_alert";
     	}
-    	if(jenkinsColor.equals("red_anime")) {
-    		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(prop.getProperty("jenkins_red_anime_hue")))
-				.setBrightness(Integer.valueOf(prop.getProperty("jenkins_red_anime_brightness")));
-    		if( prop.getProperty("jenkins_red_anime_alert").compareToIgnoreCase("true") == 0 )
-    			return su.setAlert(AlertMode.SELECT);
-    		else 
-    			return  su.setAlert(AlertMode.NONE);
+    	
+    	if( propKey != null ) {
+    		try {
+	           	List<String> hueComponents = new ArrayList<String>(Arrays.asList(prop.getProperty(propKey).split(",")));
+	
+	     		StateUpdate su = new StateUpdate().turnOn().setHue(Integer.valueOf(hueComponents.get(EnumHue.HUE.ordinal())))
+	     				.setBrightness(Integer.valueOf(hueComponents.get(EnumHue.BRIGHTNESS.ordinal())))
+	     				.setSat(Integer.valueOf(hueComponents.get(EnumHue.SATURATION.ordinal())));
+	     	    if( hueComponents.get(EnumHue.ALERT.ordinal()).compareToIgnoreCase("true" ) == 0 )
+	     	    	return su.setAlert(AlertMode.SELECT);
+	     	    else 
+	     	    	return  su.setAlert(AlertMode.NONE);
+    		} catch (Exception e) {
+    			System.out.println("The config.properties value for '" + propKey + "' did not parse.  " + e);
+    		}
     	}
-    	// else "notbuilt" or "disabled", is dim white
- 			return new StateUpdate().turnOn().setColorTemperature(Integer.valueOf(prop.getProperty("jenkins_disabled_color_temperature")))
- 					.setBrightness(Integer.valueOf(prop.getProperty("jenkins_disabled_brightness")))
- 					.setAlert(AlertMode.NONE);
+		return null;
     }
-    
+    	
+    	
     /**
      * Another hack that avoids doing a dom parsing, just to find the color of the job
      * @param json
@@ -204,16 +221,17 @@ public class HueController {
      * Main  Hue Controller
      * https://github.com/SailingSteve/hue3.git
 	 * Steve Podell
-	 * @param 
+	 * @param args, "debug" to enable the status update log for each update cycle
 	 */
     public static void main(String[] args) {
-   	
-		new HueController();
+    	boolean isDebugLogging = Arrays.asList(args).contains("debug"); 
+  
+    	new HueController();
 		if (prop == null) {
 	  		System.out.println( "unable to find config.properites file on the classpath: " + System.getProperty("java.class.path"));
 		} 
 		else while( true ) {
-	  		jenkinsStateUpdater(); 
+	  		jenkinsStateUpdater(isDebugLogging); 
 	  		try {
 	  			Integer delay = new Integer(prop.getProperty("polling_delay_ms"));
 				Thread.sleep(delay);

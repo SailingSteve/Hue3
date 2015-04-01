@@ -82,8 +82,8 @@
 	  <version>2.4</version>
     </dependency>            
    <dependency>
-	  <groupId>nl.hue</groupId>
-	  <artifactId>hueLib</artifactId>
+	  <groupId>hue</groupId>
+	  <artifactId>hue</artifactId>
 	  <version>1.0</version>
     </dependency>
     <dependency>
